@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <link rel="icon" type="image/png" href="favicon.png">
+  <meta charset="UTF-8">
+  <title>Encomendas de Craft</title>
+  <style>
+    :root {
+      --bg-claro: #547442;
+      --container-claro: #f1e0bc;
+      --input-claro: #4a5741;
+      --text-claro: #000000;
+
+      --bg-escuro: #2f4227;
+      --container-escuro: #867659;
+      --input-escuro: #4a5741;
+      --text-escuro: #000000;
+    }
+
+    body {
+      background-color: var(--bg-claro);
+      color: var(--text-claro);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      padding: 40px 20px;
+      transition: all 0.3s ease;
+    }
+
+    .dark-mode {
+      background-color: var(--bg-escuro);
+      color: var(--text-escuro);
+    }
+
+    .box {
+      background-color: var(--container-claro);
+      max-width: 700px;
+      margin: auto;
+      padding: 30px;
+      border-radius: 25px;
+      box-shadow: 0 0 30px rgba(0, 0, 0, 0.3);
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    .dark-mode .box {
+      background-color: var(--container-escuro);
+    }
+
+    .titulo {
+      font-size: 28px;
+      font-weight: bold;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    label {
+      font-size: 18px;
+      margin-top: 10px;
+      display: block;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      background-color: var(--input-claro);
+      color: var(--container-claro);
+      margin-bottom: 15px;
+      box-sizing: border-box;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    .dark-mode input,
+    .dark-mode select {
+      background-color: var(--input-escuro);
+      color: var(--text-escuro);
+    }
+
+    button {
+      background-color: #000;
+      color: #fff;
+      padding: 12px;
+      width: 100%;
+      font-size: 16px;
+      font-weight: bold;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+
+    button:hover {
+      background-color: #1f1f1f;
+    }
+
+    .pedido-lista {
+      margin-top: 20px;
+      font-size: 18px;
+    }
+
+    #modo-container {
+      position: fixed;
+      bottom: 10px;
+      left: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 5px;
+      z-index: 1000;
+    }
+
+    .modo-btn {
+      background-color: #000;
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 50px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .modo-btn:hover {
+      background-color: #1f1f1f;
+    }
+
+    .success {
+      text-align: center;
+      margin-top: 10px;
+      color: green;
+    }
+
+    .error {
+      text-align: center;
+      margin-top: 10px;
+      color: red;
+    }
+  </style>
+</head>
+<body>
+  <div id="modo-container">
+    <button class="modo-btn" onclick="alternarModo()">Modo Claro/Escuro</button>
+    <a href="https://discord.gg/YPYUMruRt9" target="_blank">Criado por Bresolindo</a>
+  </div>
+
+  <div class="box">
+    <div class="titulo">📦 Encomendas de Craft</div>
+
+    <label for="categoria">Categoria:</label>
+    <select id="categoria" onchange="popularProdutos()">
+      <option value="">-- Selecione --</option>
+    </select>
+
+    <label for="produto">Produto:</label>
+    <select id="produto">
+      <option value="">-- Selecione --</option>
+    </select>
+
+    <label for="quantidade">Quantidade:</label>
+    <input type="number" id="quantidade" min="1" value="1">
+
+    <button onclick="adicionarProduto()">Adicionar à encomenda</button>
+
+    <div class="pedido-lista" id="pedidoLista"></div>
+
+    <label for="entrega">Entrega para:</label>
+    <input type="text" id="entrega" placeholder="Ex: James Blackwood - UA657X">
+
+    <label for="prazo">Prazo:</label>
+    <input type="text" id="prazo" placeholder="Ex: quanto antes ou 20/05/1900">
+
+    <h3>Total estimado: $<span id="totalFinal">0.00</span></h3>
+
+    <button onclick="enviarEncomenda()">Enviar para o Discord</button>
+    <div id="status"></div>
+  </div>
+
+  <script>
+    const receitas = {
+      "Consumíveis": {
+        "Estabilizante": { quantidadeProduzida: 3, valorUnitario: 0.30 },
+        "Antídoto": { quantidadeProduzida: 1, valorUnitario: 1.25 },
+        "Ataduras": { quantidadeProduzida: 6, valorUnitario: 0.10 },
+        "Tônico": { quantidadeProduzida: 2, valorUnitario: 0.35 },
+        "Tônico potente": { quantidadeProduzida: 2, valorUnitario: 0.75 },
+        "Suplemento para cavalos": { quantidadeProduzida: 4, valorUnitario: 0.10 },
+        "Sabonete": { quantidadeProduzida: 2, valorUnitario: 0.05 },
+        "Sabonete de Glicínia": { quantidadeProduzida: 2, valorUnitario: 0.25 }
+      },
+      "Materiais": {
+        "Solução para curtir": { quantidadeProduzida: 6, valorUnitario: 0.18 },
+        "Solução Medicinal": { quantidadeProduzida: 1, valorUnitario: 0.35 },
+        "Preparo de Ervas": { quantidadeProduzida: 1, valorUnitario: 0.25 },
+        "Amoníaco": { quantidadeProduzida: 1, valorUnitario: 0.50 },
+        "Tinta": { quantidadeProduzida: 12, valorUnitario: 0.10 },
+        "Goma de Maitake": { quantidadeProduzida: 5, valorUnitario: 0.08 },
+        "Secador de Tecido": { quantidadeProduzida: 1, valorUnitario: 0.00 },
+        "Resina seca de papoula": { quantidadeProduzida: 5, valorUnitario: 0.10 },
+        "Buquê": { quantidadeProduzida: 1, valorUnitario: 10.00 }
+      },
+      "Bebidas": {
+        "Chá de Baunilha": { quantidadeProduzida: 1, valorUnitario: 0.25 }
+      }
+    };
+
+    let encomenda = [];
+
+    function alternarModo() {
+      document.body.classList.toggle('dark-mode');
+    }
+
+    const categoriaSelect = document.getElementById('categoria');
+    const produtoSelect = document.getElementById('produto');
+
+    for (const cat in receitas) {
+      const opt = document.createElement('option');
+      opt.value = cat;
+      opt.textContent = cat;
+      categoriaSelect.appendChild(opt);
+    }
+
+    function popularProdutos() {
+      const cat = categoriaSelect.value;
+      produtoSelect.innerHTML = '<option value="">-- Selecione --</option>';
+      if (!receitas[cat]) return;
+      for (const prod in receitas[cat]) {
+        const opt = document.createElement('option');
+        opt.value = prod;
+        opt.textContent = prod;
+        produtoSelect.appendChild(opt);
+      }
+    }
+
+    function adicionarProduto() {
+      const categoria = categoriaSelect.value;
+      const produto = produtoSelect.value;
+      const qtd = parseInt(document.getElementById('quantidade').value);
+
+      if (!categoria || !produto || !qtd || qtd <= 0) return;
+
+      encomenda.push({ produto, categoria, qtd });
+
+      atualizarLista();
+    }
+
+    function atualizarLista() {
+      const div = document.getElementById('pedidoLista');
+      div.innerHTML = "";
+      let total = 0;
+
+      encomenda.forEach((item, i) => {
+        const receita = receitas[item.categoria][item.produto];
+        const totalItem = receita.valorUnitario * item.qtd;
+        total += totalItem;
+
+        div.innerHTML += `<div>${item.qtd}x ${item.produto} - $${totalItem.toFixed(2)} <button onclick="removerItem(${i})">🗑️</button></div>`;
+      });
+
+      document.getElementById('totalFinal').textContent = total.toFixed(2);
+    }
+
+    function removerItem(index) {
+      encomenda.splice(index, 1);
+      atualizarLista();
+    }
+
+    async function enviarEncomenda() {
+      const entrega = document.getElementById('entrega').value.trim();
+      const prazo = document.getElementById('prazo').value.trim();
+      const status = document.getElementById('status');
+
+      if (!encomenda.length || !entrega || !prazo) {
+        status.innerHTML = "<div class='error'>❌ Preencha todos os campos e adicione ao menos 1 item.</div>";
+        return;
+      }
+
+      const produtosTexto = encomenda.map(e => `${e.qtd} ${e.produto}`).join(', ');
+      const valor = document.getElementById('totalFinal').textContent;
+
+      const mensagem = `📦 **Nova Encomenda Recebida**\n**Produtos:** ${produtosTexto}\n**Entrega para:** ${entrega}\n**Prazo:** ${prazo}\n**Valor a cobrar:** $${valor}`;
+
+      try {
+        await fetch("https://discordapp.com/api/webhooks/1373338278270337186/4-ypUKxDa40sMJNfL_geURiYavV3yf7FxbT00MWrj0ZvHvezIUken0vBmj5CSjMwaoI_", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: mensagem })
+        });
+
+        status.innerHTML = "<div class='success'>✅ Encomenda enviada com sucesso!</div>";
+        encomenda = [];
+        atualizarLista();
+        document.getElementById('entrega').value = "";
+        document.getElementById('prazo').value = "";
+      } catch (err) {
+        status.innerHTML = "<div class='error'>❌ Erro ao enviar. Verifique o webhook.</div>";
+      }
+    }
+  </script>
+</body>
+</html>
